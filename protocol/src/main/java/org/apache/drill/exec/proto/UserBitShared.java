@@ -663,6 +663,10 @@ public final class UserBitShared {
      * <code>METADATA_CONTROLLER = 67;</code>
      */
     METADATA_CONTROLLER(67),
+    /**
+     * <code>ES_SUB_SCAN = 68;</code>
+     */
+    ES_SUB_SCAN(68),
     ;
 
     /**
@@ -933,6 +937,10 @@ public final class UserBitShared {
      * <code>METADATA_CONTROLLER = 67;</code>
      */
     public static final int METADATA_CONTROLLER_VALUE = 67;
+    /**
+     * <code>ES_SUB_SCAN = 68;</code>
+     */
+    public static final int ES_SUB_SCAN_VALUE = 68;
 
 
     public final int getNumber() {
@@ -1016,6 +1024,7 @@ public final class UserBitShared {
         case 65: return SHP_SUB_SCAN;
         case 66: return METADATA_HANDLER;
         case 67: return METADATA_CONTROLLER;
+        case 68: return ES_SUB_SCAN;
         default: return null;
       }
     }

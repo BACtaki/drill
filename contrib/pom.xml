@@ -53,6 +53,7 @@
     <module>storage-opentsdb</module>
     <module>data</module>
     <module>udfs</module>
+    <module>format-elasticsearch</module>
   </modules>
 
   <profiles>

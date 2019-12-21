@@ -1,0 +1,207 @@
+{
+  "took": 1,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "failed": 0
+  },
+  "hits": {
+    "total": 2,
+    "max_score": 0.18232156,
+    "hits": [
+      {
+        "_index": "geosearch-rating-a0104bdf-cf77-4676-9b23-7e071991fed4-read",
+        "_type": "test-outcome",
+        "_id": "0287999d-d43c-3ec4-9f13-9ecb5f7f5e00",
+        "_score": 0.18232156,
+        "_source": {
+          "metadata": {},
+          "definition": {
+            "defReference": {
+              "reference": {
+                "id": "4d8ab8f9-d5ac-4282-b097-9c7bde5f9999",
+                "externalLocator": "http://mylink.com"
+              },
+              "defSystem": "RADAR"
+            },
+            "definitionVersion": "123f50f6c89-02bb-4274-b548-a8c43341cee7",
+            "defOwner": {
+              "ownerEmail": "abc@mail.com",
+              "org": "MAPS"
+            },
+            "priority": "P0",
+            "systemBeingEvaluated": {},
+            "evalClassification": [
+              {
+                "testClassification": {
+                  "feature": "feature",
+                  "suite": "suite"
+                }
+              }
+            ],
+            "predefinedScopeCovered": {}
+          },
+          "execution": {
+            "startTime": "120",
+            "endTime": "123",
+            "instanceContext": {}
+          },
+          "groupExecution": {
+            "executionId": {
+              "id": "4d8ab8f9-d5ac-4282-b097-9c7bde5f9999",
+              "externalLocator": "http://mylink.com"
+            },
+            "environment": {
+              "environmentType": "PRODUCTION"
+            },
+            "triggerRef": [
+              {
+                "reference": {
+                  "id": "4d8ab8f9-d5ac-4282-b097-9c7bde5f9999",
+                  "externalLocator": "http://mylink.com"
+                },
+                "triggerSystem": "ASO_FASTRACK"
+              }
+            ],
+            "createdBy": "author",
+            "systemUnderEvalVersion": {
+              "systemPackage": {
+                "reference": {
+                  "id": "abc",
+                  "externalLocator": "http://mylink.com"
+                },
+                "version": "v1"
+              }
+            },
+            "executionIntent": {}
+          },
+          "result": {
+            "status": "PASSED",
+            "metrics": [
+              {
+                "name": "metric_name1",
+                "targetValue": 2,
+                "diff": 3
+              },
+              {
+                "name": "metric_name2",
+                "value": 3,
+                "targetValue": 4,
+                "diff": 5
+              }
+            ]
+          },
+          "relations": {}
+        }
+      },
+      {
+        "_index": "geosearch-rating-a0104bdf-cf77-4676-9b23-7e071991fed4-read",
+        "_type": "test-outcome",
+        "_id": "574c69b2-8a63-3779-9ced-517ecee0675f",
+        "_score": 0.18232156,
+        "_source": {
+          "metadata": {},
+          "definition": {
+            "defReference": {
+              "reference": {
+                "id": "4d8ab8f9-d5ac-4282-b097-9c7bde5f9999",
+                "externalLocator": "http://mylink.com"
+              },
+              "defSystem": "RADAR"
+            },
+            "definitionVersion": "1233cbc98ec-a195-41dc-a3f3-02cd548aa4b2",
+            "defOwner": {
+              "ownerEmail": "abc@mail.com",
+              "org": "MAPS"
+            },
+            "priority": "P0",
+            "systemBeingEvaluated": {},
+            "evalClassification": [
+              {
+                "testClassification": {
+                  "feature": "feature",
+                  "suite": "suite"
+                }
+              }
+            ],
+            "predefinedScopeCovered": {}
+          },
+          "execution": {
+            "startTime": "120",
+            "endTime": "123",
+            "instanceContext": {}
+          },
+          "groupExecution": {
+            "executionId": {
+              "id": "4d8ab8f9-d5ac-4282-b097-9c7bde5f9999",
+              "externalLocator": "http://mylink.com"
+            },
+            "environment": {
+              "environmentType": "PRODUCTION"
+            },
+            "triggerRef": [
+              {
+                "reference": {
+                  "id": "4d8ab8f9-d5ac-4282-b097-9c7bde5f9999",
+                  "externalLocator": "http://mylink.com"
+                },
+                "triggerSystem": "ASO_FASTRACK"
+              }
+            ],
+            "createdBy": "author",
+            "systemUnderEvalVersion": {
+              "systemPackage": {
+                "reference": {
+                  "id": "abc",
+                  "externalLocator": "http://mylink.com"
+                },
+                "version": "v1"
+              }
+            },
+            "executionIntent": {}
+          },
+          "result": {
+            "status": "PASSED",
+            "metrics": [
+              {
+                "name": "metric_name1",
+                "targetValue": 2,
+                "diff": 3
+              },
+              {
+                "name": "metric_name2",
+                "value": 3,
+                "targetValue": 4,
+                "diff": 5
+              }
+            ]
+          },
+          "relations": {}
+        }
+      }
+    ]
+  },
+  "aggregations": {
+    "agg_by_metric": {
+      "doc_count": 4,
+      "withFilter": {
+        "doc_count": 2,
+        "value_stats": {
+          "count": 2,
+          "min": 3,
+          "max": 3,
+          "avg": 3,
+          "sum": 6,
+          "sum_of_squares": 18,
+          "variance": 0,
+          "std_deviation": 0,
+          "std_deviation_bounds": {
+            "upper": 3,
+            "lower": 3
+          }
+        }
+      }
+    }
+  }
+}

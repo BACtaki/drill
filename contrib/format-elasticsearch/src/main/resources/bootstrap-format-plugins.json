@@ -1,0 +1,23 @@
+{
+  "storage":{
+    "dfs": {
+      "type": "file",
+      "workspaces": {
+        "root": {
+          "location": "/Users/badrulchowdhury/code/drill",
+          "writable": false,
+          "defaultInputFormat": null
+        }
+      },
+      "formats": {
+        "elasticsearch": {
+          "type": "text",
+          "extensions": [
+            "elasticsearch"
+          ],
+          "delimiter": "\n"
+        }
+      }
+    }
+  }
+}
