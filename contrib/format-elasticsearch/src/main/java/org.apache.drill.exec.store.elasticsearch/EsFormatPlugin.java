@@ -64,9 +64,7 @@ public class EsFormatPlugin extends EasyFormatPlugin<EsFormatConfig> {
 
   @Override
   public boolean supportsPushDown() {
-    // We do not push down filters from sqlline to ES yet.
-    //
-    return false;
+    return true;
   }
 
   @Override

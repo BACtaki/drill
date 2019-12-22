@@ -19,7 +19,6 @@
 package org.apache.drill.exec.store.elasticsearch;
 
 import io.netty.buffer.DrillBuf;
-import org.apache.commons.io.IOUtils;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.exception.OutOfMemoryException;
@@ -33,8 +32,18 @@ import org.apache.drill.exec.store.dfs.easy.FileWork;
 import org.apache.drill.exec.vector.complex.impl.VectorContainerWriter;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
+import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
+import org.elasticsearch.client.RestClientBuilder.HttpClientConfigCallback;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.realityforge.jsyslog.message.StructuredDataParameter;
 import org.realityforge.jsyslog.message.SyslogMessage;
 import org.slf4j.Logger;
@@ -67,6 +76,7 @@ public class EsRecordReader extends AbstractRecordReader {
   private int lineCount;
   private final List<SchemaPath> projectedColumns;
   private String line;
+  private boolean isOpen = false;
 
   public EsRecordReader(FragmentContext context,
                             DrillFileSystem fileSystem,
@@ -108,16 +118,44 @@ public class EsRecordReader extends AbstractRecordReader {
     reader = new BufferedReader(new InputStreamReader(in));
 
     try {
-      String[] connInfo = reader.readLine().split(":");  // A single host:port
+      // A single host:port:user:password
+      //
+      String[] connInfo = reader.readLine().split(":");
 
       // Currently we only support connecting to a single ES instance.
-      // Error out if format of a single (host:port) is not followed.
+      // Error out if format of a single (host:port:user:password) is not followed.
       //
-      if (connInfo.length != 2) throw new IOException("Required format is host:port");
+      if (connInfo.length != 4) throw new IOException("Required format is host:port");
 
-      esClient = new RestHighLevelClient(
-              RestClient.builder(new HttpHost(connInfo[0], Integer.parseInt(connInfo[1]), "http")));
+      isOpen = true;
 
+      final CredentialsProvider credentialsProvider =
+              new BasicCredentialsProvider();
+      credentialsProvider.setCredentials(AuthScope.ANY,
+              new UsernamePasswordCredentials(connInfo[2], connInfo[3]));
+
+      RestClientBuilder restClientBuilder = RestClient.builder(
+              new HttpHost(connInfo[0], Integer.parseInt(connInfo[1])))
+              .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+                      .setDefaultCredentialsProvider(credentialsProvider));
+
+      esClient = new RestHighLevelClient(restClientBuilder);
+
+      // Create the ES search query
+      //
+      SearchRequest searchRequest = new SearchRequest();
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+      searchRequest.source(searchSourceBuilder);
+
+      // Run the query
+      //
+      line = esClient.search(searchRequest).toString();
+      // Trim the result
+      //
+      line = line.trim();
+
+      lineCount++;
     } catch (Exception e)
     {
       throw UserException
@@ -137,42 +175,37 @@ public class EsRecordReader extends AbstractRecordReader {
 
     try {
       BaseWriter.MapWriter map = this.writer.rootAsMap();
-      String line;
 
-      while (recordCount < MAX_RECORDS_PER_BATCH && (line = this.reader.readLine()) != null) {
-        lineCount++;
+      try {
+        this.writer.setPosition(recordCount);
 
-        // Skip empty lines
-        line = line.trim();
-        if (line.length() == 0) {
-          continue;
-        }
-        this.line = line;
+        // Map the string response to varchar in drill
+        //
+        map.start();
 
-        try {
-          SyslogMessage parsedMessage = SyslogMessage.parseStructuredSyslogMessage(line);
+        byte[] bytes = line.getBytes(StandardCharsets.UTF_8);
+        buffer = this.buffer.reallocIfNeeded(bytes.length);
+        buffer.setBytes(0, bytes, 0, bytes.length);
+        map.varChar("Elasticsearch query result").writeVarChar(0, bytes.length, buffer);
 
-          this.writer.setPosition(recordCount);
-          map.start();
+        map.end();
 
-          if (isStarQuery()) {
-            writeAllColumns(map, parsedMessage);
-          } else {
-            writeProjectedColumns(map, parsedMessage);
-          }
-          map.end();
+        if(isOpen) {
+          // Update record number so writer index is correct.
+          //
           recordCount++;
+          isOpen = false;
+        }
 
-        } catch (Exception e) {
-          errorCount++;
-          if (errorCount > maxErrors) {
-            throw UserException
-                    .dataReadError()
-                    .message("Maximum Error Threshold Exceeded: ")
-                    .addContext("Line: " + lineCount)
-                    .addContext(e.getMessage())
-                    .build(logger);
-          }
+      } catch (Exception e) {
+        errorCount++;
+        if (errorCount > maxErrors) {
+          throw UserException
+                  .dataReadError()
+                  .message("Maximum Error Threshold Exceeded: ")
+                  .addContext("Line: " + lineCount)
+                  .addContext(e.getMessage())
+                  .build(logger);
         }
       }
 
@@ -192,119 +225,8 @@ public class EsRecordReader extends AbstractRecordReader {
     return recordCount;
   }
 
-  private void writeAllColumns(BaseWriter.MapWriter map, SyslogMessage parsedMessage) {
-
-    long milliseconds = 0;
-    try {
-      milliseconds = parsedMessage.getTimestamp().getMillis();
-    } catch (final Exception e) {
-      errorCount++;
-      if (errorCount > maxErrors) {
-        throw UserException.dataReadError()
-                .message("Syslog Format Plugin: Error parsing date")
-                .addContext(e.getMessage())
-                .build(logger);
-      }
-    }
-    map.timeStamp("event_date").writeTimeStamp(milliseconds);
-    map.integer("severity_code").writeInt(parsedMessage.getLevel().ordinal());
-    map.integer("facility_code").writeInt(parsedMessage.getFacility().ordinal());
-
-    mapStringField("severity", parsedMessage.getLevel().name(), map);
-    mapStringField("facility", parsedMessage.getFacility().name(), map);
-    mapStringField("ip", parsedMessage.getHostname(), map);
-    mapStringField("app_name", parsedMessage.getAppName(), map);
-    mapStringField("process_id", parsedMessage.getProcId(), map);
-    mapStringField("message_id", parsedMessage.getMsgId(), map);
-
-    if (parsedMessage.getStructuredData() != null) {
-      mapStringField("structured_data_text", parsedMessage.getStructuredData().toString(), map);
-      Map<String, List<StructuredDataParameter>> structuredData = parsedMessage.getStructuredData();
-      if (flattenStructuredData) {
-        mapFlattenedStructuredData(structuredData, map);
-      } else {
-        mapComplexField("structured_data", structuredData, map);
-      }
-    }
-    mapStringField("message", parsedMessage.getMessage(), map);
-  }
-
-  private void writeProjectedColumns(BaseWriter.MapWriter map, SyslogMessage parsedMessage) throws UserException {
-    String columnName;
-
-    for (SchemaPath col : projectedColumns) {
-
-      //Case for nested fields
-      if (col.getAsNamePart().hasChild()) {
-        String fieldName = col.getAsNamePart().getChild().getName();
-        mapStructuredDataField(fieldName, map, parsedMessage);
-      } else {
-        columnName = col.getAsNamePart().getName();
-
-        //Extracts fields from structured data IF the user selected to flatten these fields
-        if ((!columnName.equals("structured_data_text")) && columnName.startsWith("structured_data_")) {
-          String fieldName = columnName.replace("structured_data_", "");
-          String value = getFieldFromStructuredData(fieldName, parsedMessage);
-          mapStringField(columnName, value, map);
-        } else {
-          switch (columnName) {
-            case "event_date":
-              long milliseconds = parsedMessage.getTimestamp().getMillis(); //TODO put in try/catch
-              map.timeStamp("event_date").writeTimeStamp(milliseconds);
-              break;
-            case "severity_code":
-              map.integer("severity_code").writeInt(parsedMessage.getLevel().ordinal());
-              break;
-            case "facility_code":
-              map.integer("facility_code").writeInt(parsedMessage.getFacility().ordinal());
-              break;
-            case "severity":
-              mapStringField("severity", parsedMessage.getLevel().name(), map);
-              break;
-            case "facility":
-              mapStringField("facility", parsedMessage.getFacility().name(), map);
-              break;
-            case "ip":
-              mapStringField("ip", parsedMessage.getHostname(), map);
-              break;
-            case "app_name":
-              mapStringField("app_name", parsedMessage.getAppName(), map);
-              break;
-            case "process_id":
-              mapStringField("process_id", parsedMessage.getProcId(), map);
-              break;
-            case "msg_id":
-              mapStringField("message_id", parsedMessage.getMsgId(), map);
-              break;
-            case "structured_data":
-              if (parsedMessage.getStructuredData() != null) {
-                Map<String, List<StructuredDataParameter>> structured_data = parsedMessage.getStructuredData();
-                mapComplexField("structured_data", structured_data, map);
-              }
-              break;
-            case "structured_data_text":
-              if (parsedMessage.getStructuredData() != null) {
-                mapStringField("structured_data_text", parsedMessage.getStructuredData().toString(), map);
-              } else {
-                mapStringField("structured_data_text", "", map);
-              }
-              break;
-            case "message":
-              mapStringField("message", parsedMessage.getMessage(), map);
-              break;
-            case "_raw":
-              mapStringField("_raw", this.line, map);
-              break;
-
-            default:
-              mapStringField(columnName, "", map);
-          }
-        }
-      }
-    }
-  }
-
-  //Helper function to map strings
+  // Helper function to map strings
+  //
   private void mapStringField(String name, String value, BaseWriter.MapWriter map) {
     if (value == null) {
       return;
@@ -324,7 +246,8 @@ public class EsRecordReader extends AbstractRecordReader {
     }
   }
 
-  //Helper function to flatten structured data
+  // Helper function to flatten structured data
+  //
   private void mapFlattenedStructuredData(Map<String, List<StructuredDataParameter>> data, BaseWriter.MapWriter map) {
     for (Map.Entry<String, List<StructuredDataParameter>> entry : data.entrySet()) {
       for (StructuredDataParameter parameter : entry.getValue()) {
@@ -335,7 +258,8 @@ public class EsRecordReader extends AbstractRecordReader {
     }
   }
 
-  //Gets field from the Structured Data Construct
+  // Gets field from the Structured Data Construct
+  //
   private String getFieldFromStructuredData(String fieldName, SyslogMessage parsedMessage) {
     for (Map.Entry<String, List<StructuredDataParameter>> entry : parsedMessage.getStructuredData().entrySet()) {
       for (StructuredDataParameter d : entry.getValue()) {
@@ -347,7 +271,8 @@ public class EsRecordReader extends AbstractRecordReader {
     return null;
   }
 
-  //Helper function to map arrays
+  // Helper function to map arrays
+  //
   private void mapComplexField(String mapName, Map<String, List<StructuredDataParameter>> data, BaseWriter.MapWriter map) {
     for (Map.Entry<String, List<StructuredDataParameter>> entry : data.entrySet()) {
       List<StructuredDataParameter> dataParameters = entry.getValue();
@@ -372,20 +297,8 @@ public class EsRecordReader extends AbstractRecordReader {
     }
   }
 
-  private void mapStructuredDataField(String fieldName, BaseWriter.MapWriter map, SyslogMessage parsedMessage) {
-    String fieldValue = getFieldFromStructuredData(fieldName, parsedMessage);
-    VarCharHolder rowHolder = new VarCharHolder();
-
-    byte[] rowStringBytes = fieldValue.getBytes();
-    this.buffer.reallocIfNeeded(rowStringBytes.length);
-    this.buffer.setBytes(0, rowStringBytes);
-    rowHolder.start = 0;
-    rowHolder.end = rowStringBytes.length;
-    rowHolder.buffer = this.buffer;
-
-    map.map("structured_data").varChar(fieldName).write(rowHolder);
-  }
-
+  // Helper function to map simple dates
+  //
   public SimpleDateFormat getValidDateObject(String d) {
     SimpleDateFormat tempDateFormat;
     if (d != null && !d.isEmpty()) {
@@ -400,6 +313,7 @@ public class EsRecordReader extends AbstractRecordReader {
   }
 
   public void close() throws Exception {
+    this.esClient.close();
     this.reader.close();
   }
 }

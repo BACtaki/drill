@@ -17,26 +17,15 @@
  */
 package org.apache.drill.exec.store.elasticsearch;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.types.TypeProtos;
-import org.apache.drill.exec.record.metadata.TupleMetadata;
 import org.apache.drill.exec.rpc.RpcException;
 import org.apache.drill.exec.server.Drillbit;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.dfs.FileSystemConfig;
 import org.apache.drill.exec.store.dfs.FileSystemPlugin;
-import org.apache.drill.exec.store.syslog.SyslogFormatConfig;
 import org.apache.drill.test.ClusterTest;
 import org.apache.drill.test.BaseDirTestWatcher;
-import org.apache.drill.exec.physical.rowSet.RowSet;
-import org.apache.drill.exec.physical.rowSet.RowSetBuilder;
 import org.apache.drill.test.ClusterFixture;
-import org.apache.drill.test.rowSet.RowSetComparison;
-import org.apache.drill.exec.record.metadata.SchemaBuilder;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.ClassRule;
+import org.junit.*;
 
 public class TestEsFormat extends ClusterTest {
 
@@ -62,12 +51,11 @@ public class TestEsFormat extends ClusterTest {
   }
 
   @Test
-  public void testNonComplexFields() throws RpcException {
+  public void testRowcountForSimpleRestCall() throws RpcException {
     String sql = "select * from cp.`./test.elasticsearch`";
 
     int nStatements = client.exec(sql);
 
-    String test = "test";
-    // TODO rest of test
+    Assert.assertEquals(1, nStatements);
   }
 }

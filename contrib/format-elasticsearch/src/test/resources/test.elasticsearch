@@ -1,1 +1,1 @@
-localhost:9200
+localhost:9200:elastic:changeme

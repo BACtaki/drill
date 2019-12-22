@@ -16,6 +16,13 @@
         }
       },
       "formats" : {
+        "elasticsearch": {
+          "type": "text",
+          "extensions": [
+            "elasticsearch"
+          ],
+          "delimiter": "\n"
+        },
         "psv" : {
           "type" : "text",
           "extensions" : [ "tbl" ],
@@ -87,6 +94,13 @@
         }
       },
       "formats" : {
+        "elasticsearch": {
+          "type": "text",
+          "extensions": [
+            "elasticsearch"
+          ],
+          "delimiter": "\n"
+        },
         "psv" : {
           "type" : "text",
           "extensions" : [ "tbl" ],

@@ -1,0 +1,2 @@
+{"queryId":"2201808d-69e7-a490-0dbe-799512ea8b7d","schema":"","queryText":"select * from dfs.`/Users/badrulchowdhury/test.elasticsearch`","start":1576959858986,"finish":1576959860431,"outcome":"COMPLETED","username":"admin","remoteAddress":"192.168.0.12:56653"}
+{"queryId":"22018085-78c0-dd98-017c-d549499142d5","schema":"","queryText":"select * from dfs.`/Users/badrulchowdhury/test.elasticsearch`","start":1576959866236,"finish":1576959866327,"outcome":"COMPLETED","username":"admin","remoteAddress":"192.168.0.12:56653"}
