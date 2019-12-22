@@ -1,0 +1,90 @@
+diff --git a/start_drill.sh b/start_drill.sh
+new file mode 100755
+index 000000000..74a565610
+--- /dev/null
++++ b/start_drill.sh
+@@ -0,0 +1,7 @@
++INSTALL_DIR=./OUT
++
++rm -rf $INSTALL_DIR
++mkdir $INSTALL_DIR
++
++tar xvzf distribution/target/*.tar.gz --strip=1 -C $INSTALL_DIR
++$INSTALL_DIR/bin/sqlline -u jdbc:drill:zk=local -n admin -p admin
+
+diff --git a/test.elasticsearch b/test.elasticsearch
+new file mode 100644
+index 000000000..5ed3f51c4
+--- /dev/null
++++ b/test.elasticsearch
+@@ -0,0 +1 @@
++localhost:9200:elastic:changeme
+
+diff --git a/protocol/src/main/java/org/apache/drill/exec/proto/UserBitShared.java b/protocol/src/main/java/org/apache/drill/exec/proto/UserBitShared.java
+index 25d5f8999..ce03d3575 100644
+--- a/protocol/src/main/java/org/apache/drill/exec/proto/UserBitShared.java
++++ b/protocol/src/main/java/org/apache/drill/exec/proto/UserBitShared.java
+@@ -663,6 +663,10 @@ public final class UserBitShared {
+      * <code>METADATA_CONTROLLER = 67;</code>
+      */
+     METADATA_CONTROLLER(67),
++    /**
++     * <code>ES_SUB_SCAN = 68;</code>
++     */
++    ES_SUB_SCAN(68),
+     ;
+ 
+     /**
+@@ -933,6 +937,10 @@ public final class UserBitShared {
+      * <code>METADATA_CONTROLLER = 67;</code>
+      */
+     public static final int METADATA_CONTROLLER_VALUE = 67;
++    /**
++     * <code>ES_SUB_SCAN = 68;</code>
++     */
++    public static final int ES_SUB_SCAN_VALUE = 68;
+ 
+ 
+     public final int getNumber() {
+@@ -1016,6 +1024,7 @@ public final class UserBitShared {
+         case 65: return SHP_SUB_SCAN;
+         case 66: return METADATA_HANDLER;
+         case 67: return METADATA_CONTROLLER;
++        case 68: return ES_SUB_SCAN;
+         default: return null;
+       }
+     }
+
+diff --git a/exec/java-exec/src/main/resources/bootstrap-storage-plugins.json b/exec/java-exec/src/main/resources/bootstrap-storage-plugins.json
+index 75e363fa3..a817024f9 100644
+--- a/exec/java-exec/src/main/resources/bootstrap-storage-plugins.json
++++ b/exec/java-exec/src/main/resources/bootstrap-storage-plugins.json
+@@ -16,6 +16,13 @@
+         }
+       },
+       "formats" : {
++        "elasticsearch": {
++          "type": "text",
++          "extensions": [
++            "elasticsearch"
++          ],
++          "delimiter": "\n"
++        },
+         "psv" : {
+           "type" : "text",
+           "extensions" : [ "tbl" ],
+@@ -87,6 +94,13 @@
+         }
+       },
+       "formats" : {
++        "elasticsearch": {
++          "type": "text",
++          "extensions": [
++            "elasticsearch"
++          ],
++          "delimiter": "\n"
++        },
+         "psv" : {
+           "type" : "text",
+           "extensions" : [ "tbl" ],
+
